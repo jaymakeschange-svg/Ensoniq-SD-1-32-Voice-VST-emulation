@@ -78,10 +78,12 @@ jobs:
       uses: actions/cache/restore@v4
       with:
         path: C:\mame\build
-        key: mame0288-win-${{ steps.vs.outputs.gen }}-${{ hashFiles('Mame_Patches/**') }}
+        key: mame0288-win-${{ steps.vs.outputs.gen }}-${{ hashFiles('Mame_Patches/**') }}-${{ github.run_id }}
+        restore-keys: |
+          mame0288-win-${{ steps.vs.outputs.gen }}-${{ hashFiles('Mame_Patches/**') }}-
 
     - name: Generate MAME Visual Studio projects (MSYS2)
-      if: steps.cache-mame.outputs.cache-hit != 'true'
+      if: hashFiles('C:/mame/build/projects/windows/**/*.sln') == ''
       shell: pwsh
       env:
         MSYSTEM: MINGW64
@@ -94,7 +96,7 @@ jobs:
         Get-ChildItem C:\mame\build\projects -Recurse -Filter *.sln | ForEach-Object { Write-Host $_.FullName }
 
     - name: Build MAME (MSBuild)
-      if: steps.cache-mame.outputs.cache-hit != 'true'
+      id: mamebuild
       shell: pwsh
       env:
         # appended to every cl.exe call: the NTDDI fix from BUILD.md, and no warnings-as-errors
@@ -103,15 +105,17 @@ jobs:
         $sln = Get-ChildItem C:\mame\build\projects\windows -Recurse -Filter *.sln | Select-Object -First 1
         Write-Host "Building $($sln.FullName)"
         & "${{ steps.vs.outputs.msbuild }}" $sln.FullName /p:Configuration=Release /p:Platform=x64 `
-            /p:PlatformToolset=${{ steps.vs.outputs.ts }} /p:TreatWarningAsError=false /m /v:minimal /nologo
-        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            /p:PlatformToolset=${{ steps.vs.outputs.ts }} /p:TreatWarningAsError=false /m /v:minimal /nologo `
+            "/flp:errorsonly;logfile=C:\mame-errors.log"
+        $code = $LASTEXITCODE
+        if ($code -ne 0) { & "$env:GITHUB_WORKSPACE\.github\report-errors.ps1" "C:\mame-errors.log" "MAME build errors"; exit $code }
 
     - name: Save MAME build cache
-      if: steps.cache-mame.outputs.cache-hit != 'true'
+      if: always() && steps.cache-mame.outcome == 'success'
       uses: actions/cache/save@v4
       with:
         path: C:\mame\build
-        key: mame0288-win-${{ steps.vs.outputs.gen }}-${{ hashFiles('Mame_Patches/**') }}
+        key: mame0288-win-${{ steps.vs.outputs.gen }}-${{ hashFiles('Mame_Patches/**') }}-${{ github.run_id }}
 
     - name: Build Projucer
       shell: pwsh
@@ -161,8 +165,9 @@ jobs:
         $sln = Get-ChildItem Builds -Recurse -Filter *.sln | Where-Object { $_.FullName -match 'Modern' } | Select-Object -First 1
         Write-Host "Building $($sln.FullName)"
         & "${{ steps.vs.outputs.msbuild }}" $sln.FullName /p:Configuration=Release /p:Platform=x64 `
-            /p:PlatformToolset=${{ steps.vs.outputs.ts }} /m /v:minimal /nologo
-        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            /p:PlatformToolset=${{ steps.vs.outputs.ts }} /m /v:minimal /nologo "/flp:errorsonly;logfile=C:\plugin-errors.log"
+        $code = $LASTEXITCODE
+        if ($code -ne 0) { & "$env:GITHUB_WORKSPACE\.github\report-errors.ps1" "C:\plugin-errors.log" "Plugin build errors"; exit $code }
         Get-ChildItem Builds -Recurse -Filter "*.vst3" | ForEach-Object { Write-Host $_.FullName }
 
     - name: Package
