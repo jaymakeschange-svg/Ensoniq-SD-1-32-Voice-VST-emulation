@@ -10,6 +10,7 @@
 
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include "SD1VoiceProbe.h"
 
 EnsoniqSD1AudioProcessorEditor::EnsoniqSD1AudioProcessorEditor (EnsoniqSD1AudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor (p), presetBrowser (p)
@@ -329,7 +330,31 @@ EnsoniqSD1AudioProcessorEditor::EnsoniqSD1AudioProcessorEditor (EnsoniqSD1AudioP
     // Schedule reset 0.5s after GUI opens (or 3.5s if the MAME engine is still booting)
         double now = audioProcessor.mameMachine ? audioProcessor.mameMachine->time().as_double() : 0.0;
         audioProcessor.scheduledCompareResetTime.store(std::max(3.5, now + 0.5), std::memory_order_release);
-        
+
+    // --- MODERN UI LAYER ---
+    // Drawn over the MAME panel; the engine, panel and file manager underneath are unchanged.
+    voiceProbe = std::make_unique<SD1VoiceProbe>();
+    modernView = std::make_unique<sd1ui::ModernView>(static_cast<sd1ui::Host&>(*this));
+    addChildComponent(*modernView);
+    presetBrowser.setLookAndFeel(&modernLookAndFeel);
+
+    addChildComponent(modernReturnButton);
+    modernReturnButton.setLookAndFeel(&modernLookAndFeel);
+    modernReturnButton.setWantsKeyboardFocus(false);
+    modernReturnButton.setMouseClickGrabsKeyboardFocus(false);
+    modernReturnButton.onClick = [this] { modernActive = true; updateModernVisibility(); };
+
+    // Prepare the file manager lists so < > can step right away
+    if (!audioProcessor.fileManagerState.visible && audioProcessor.fileManagerState.category.isNotEmpty()) {
+        juce::Component::SafePointer<EnsoniqSD1AudioProcessorEditor> safeThis(this);
+        juce::Timer::callAfterDelay(400, [safeThis]() {
+            if (safeThis != nullptr && !safeThis->presetBrowser.isVisible())
+                safeThis->presetBrowser.restoreStateFromProcessor();
+        });
+    }
+
+    resized();
+    updateModernVisibility();
 }
 
 EnsoniqSD1AudioProcessorEditor::~EnsoniqSD1AudioProcessorEditor()
@@ -342,6 +367,9 @@ EnsoniqSD1AudioProcessorEditor::~EnsoniqSD1AudioProcessorEditor()
         saveGlobalSettings();
     }
     stopTimer();
+    modernView.reset();
+    presetBrowser.setLookAndFeel(nullptr);
+    modernReturnButton.setLookAndFeel(nullptr);
 }
 
 void EnsoniqSD1AudioProcessorEditor::timerCallback()
@@ -555,7 +583,8 @@ void EnsoniqSD1AudioProcessorEditor::timerCallback()
             }
         }
     }
-    
+
+    updateModernVisibility();
 }
 // debug rack: original paint() preserved below for non-debug builds
 #ifndef SD1_DEBUG_RACK_PANEL
@@ -1241,6 +1270,10 @@ void EnsoniqSD1AudioProcessorEditor::resized()
     // FILE MANAGER
     presetBrowser.setBounds(getLocalBounds());
 #endif // SD1_DEBUG_RACK_PANEL
+
+    // MODERN UI LAYER
+    if (modernView != nullptr) modernView->setBounds(getLocalBounds());
+    modernReturnButton.setBounds(getWidth() - 116, 6, 108, 24);
 }
 
 // ==============================================================================
@@ -1327,7 +1360,18 @@ void EnsoniqSD1AudioProcessorEditor::mouseMove(const juce::MouseEvent& e) {
     audioProcessor.injectMouseMove(e.x, e.y);
 }
 
-void EnsoniqSD1AudioProcessorEditor::loadMediaButtonClicked()
+void EnsoniqSD1AudioProcessorEditor::openFileManager()
+{
+    audioProcessor.requestedViewIndex.store(4, std::memory_order_release);
+    presetBrowser.setVisible(true);
+    presetBrowser.toFront(false);
+    updateWindowSize();
+    presetBrowser.restoreStateFromProcessor();
+    updateModernVisibility();
+    repaint();
+}
+
+void EnsoniqSD1AudioProcessorEditor::loadMediaButtonClicked(juce::Component* menuAnchor)
 {
     juce::PopupMenu m;
     
@@ -1339,16 +1383,11 @@ void EnsoniqSD1AudioProcessorEditor::loadMediaButtonClicked()
     m.addItem(4, "Eject Floppy", audioProcessor.isFloppyLoaded.load(std::memory_order_acquire));
     m.addItem(5, "Remove Cartridge", audioProcessor.isCartLoaded.load(std::memory_order_acquire));
 
-    m.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&loadMediaButton),
+    m.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(menuAnchor != nullptr ? menuAnchor : &loadMediaButton),
         [this](int result) {
             
         if (result == 1) {
-                        audioProcessor.requestedViewIndex.store(4, std::memory_order_release);
-                        presetBrowser.setVisible(true);
-                        presetBrowser.toFront(false);
-                        updateWindowSize();
-                        presetBrowser.restoreStateFromProcessor();
-                        repaint();
+                        openFileManager();
                     }
         else if (result == 2 || result == 3) {
                         juce::String filter = (result == 2) ? "*.img;*.hfe;*.dsk;*.eda" : "*.eeprom;*.rom;*.cart;*.sc32";
@@ -1622,4 +1661,134 @@ void EnsoniqSD1AudioProcessorEditor::locateRomButtonClicked()
             repaint();
         }
     });
+}
+
+// ==============================================================================
+// MODERN UI LAYER (sd1ui::Host)
+// Everything here reuses paths the original UI already uses: panel-button
+// parameters, the data entry parameter, the VFD text, the file manager and
+// read-only views of emulator state. No engine code is involved.
+// ==============================================================================
+void EnsoniqSD1AudioProcessorEditor::updateModernVisibility()
+{
+    if (modernView == nullptr) return;
+
+    const bool engineOk = audioProcessor.isMameRunningFlag()
+                       && !audioProcessor.isRomMissing.load(std::memory_order_acquire)
+                       && !audioProcessor.isRomInvalid.load(std::memory_order_acquire)
+                       && !audioProcessor.isSelfCheckFailed.load(std::memory_order_acquire)
+                       && !audioProcessor.isUnsupportedAUHost.load(std::memory_order_acquire)
+                       && !audioProcessor.sampleRateMismatch.load(std::memory_order_acquire);
+    const bool browserOpen = presetBrowser.isVisible();
+    const bool overlayFree = engineOk && !browserOpen && !isSettingsVisible;
+
+    const bool showModern = modernActive && overlayFree;
+    if (modernView->isVisible() != showModern) {
+        modernView->setVisible(showModern);
+        if (showModern) modernView->toFront(false);
+    }
+
+    const bool showReturn = !modernActive && overlayFree;
+    if (modernReturnButton.isVisible() != showReturn) {
+        modernReturnButton.setVisible(showReturn);
+        if (showReturn) modernReturnButton.toFront(false);
+    }
+}
+
+bool EnsoniqSD1AudioProcessorEditor::engineReady()
+{
+    return audioProcessor.isMameRunningFlag()
+        && audioProcessor.mameIsFullyBooted.load(std::memory_order_acquire)
+        && audioProcessor.mameMachine != nullptr;
+}
+
+juce::String EnsoniqSD1AudioProcessorEditor::vfdText()
+{
+    return audioProcessor.getHardwareVfdText();
+}
+
+bool EnsoniqSD1AudioProcessorEditor::vfdUnderlined(int index)
+{
+    if (index < 0 || index >= EnsoniqSD1AudioProcessor::VFD_SIZE) return false;
+    return (audioProcessor.vfdSegments[index].load(std::memory_order_relaxed) & 0x8000) != 0;
+}
+
+void EnsoniqSD1AudioProcessorEditor::setButton(const juce::String& paramID, bool down)
+{
+    // Same path as the panel/automation: the MAME thread polls these button parameters.
+    if (auto* p = audioProcessor.apvts.getParameter(paramID))
+        p->setValueNotifyingHost(down ? 1.0f : 0.0f);
+}
+
+void EnsoniqSD1AudioProcessorEditor::beginDataEntry()
+{
+    if (auto* p = audioProcessor.apvts.getParameter("data_entry")) p->beginChangeGesture();
+}
+
+void EnsoniqSD1AudioProcessorEditor::setDataEntry(float v)
+{
+    if (auto* p = audioProcessor.apvts.getParameter("data_entry"))
+        p->setValueNotifyingHost(juce::jlimit(0.0f, 1.0f, v));
+}
+
+void EnsoniqSD1AudioProcessorEditor::endDataEntry()
+{
+    if (auto* p = audioProcessor.apvts.getParameter("data_entry")) p->endChangeGesture();
+}
+
+float EnsoniqSD1AudioProcessorEditor::getDataEntry()
+{
+    if (auto* v = audioProcessor.apvts.getRawParameterValue("data_entry")) return v->load();
+    return 0.0f;
+}
+
+bool EnsoniqSD1AudioProcessorEditor::readVoices(sd1ui::VoiceFrame& frame)
+{
+    if (!engineReady() || voiceProbe == nullptr) return false;
+    voiceProbe->bind(audioProcessor.mameMachine);
+    return voiceProbe->read(frame);
+}
+
+int EnsoniqSD1AudioProcessorEditor::readWave(int bank, uint32_t addr, uint32_t loopStart, uint32_t loopEnd, int16_t* dst, int n)
+{
+    if (!engineReady() || voiceProbe == nullptr) return 0;
+    return voiceProbe->readWave(bank, addr, loopStart, loopEnd, dst, n);
+}
+
+void EnsoniqSD1AudioProcessorEditor::stepPreset(int delta)
+{
+    if (!engineReady()) return;
+    presetBrowser.stepPreset(delta);
+}
+
+juce::String EnsoniqSD1AudioProcessorEditor::presetName()
+{
+    return presetBrowser.getCurrentPresetLabel();
+}
+
+juce::String EnsoniqSD1AudioProcessorEditor::presetSource()
+{
+    return presetBrowser.getCurrentSourceLabel();
+}
+
+void EnsoniqSD1AudioProcessorEditor::openLibrary()
+{
+    openFileManager();
+}
+
+void EnsoniqSD1AudioProcessorEditor::openMedia(juce::Component* anchor)
+{
+    loadMediaButtonClicked(anchor);
+}
+
+void EnsoniqSD1AudioProcessorEditor::openSettings()
+{
+    if (!isSettingsVisible) toggleSettings();
+    updateModernVisibility();
+}
+
+void EnsoniqSD1AudioProcessorEditor::showPanel()
+{
+    modernActive = false;
+    updateModernVisibility();
 }

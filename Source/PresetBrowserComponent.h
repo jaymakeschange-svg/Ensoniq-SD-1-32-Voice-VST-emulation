@@ -23,7 +23,7 @@ public:
     void paintItem(juce::Graphics& g, int width, int height) override
         {
             lastPaintWidth = width;
-            if (isSelected()) g.fillAll(juce::Colour(0xff3a5a7a));
+            if (isSelected()) g.fillAll(juce::Colour(0xff8a3f46));
 
             int textX = 15; // Align both categories and sub-items vertically at the same X position
 
@@ -44,7 +44,7 @@ public:
                 }
                 g.fillPath(p);
 
-                g.setColour(juce::Colours::orange);
+                g.setColour(juce::Colour(0xffd85e69));
                 g.setFont(juce::Font(juce::FontOptions(15.0f)).boldened());
             } else {
                 g.setColour(isSelected() ? juce::Colours::white : juce::Colours::lightgrey);
@@ -114,6 +114,12 @@ public:
     void returnToInternalMode(int bank, int program);
 
     std::function<void()> onClose;
+
+    // --- MODERN UI: step through the current list like a modern preset browser ---
+    // Uses exactly the same code path as clicking a row in the file manager.
+    bool stepPreset(int delta);
+    juce::String getCurrentPresetLabel() const;
+    juce::String getCurrentSourceLabel() const;
     
     // --- FILE MANAGER OPERATION STATES ---
         bool isSYXProcessing = false;
@@ -127,6 +133,7 @@ public:
     int getNumRows() override { return currentListItems.size(); }
     void paintListBoxItem(int rowNumber, juce::Graphics& g, int width, int height, bool rowIsSelected) override;
     void listBoxItemClicked(int row, const juce::MouseEvent&) override;
+    void handleContentRowClick(int row);
 
     void updateContentList(const juce::String& categoryName);
 
@@ -177,7 +184,7 @@ private:
         int getNumRows() override { return items.size(); }
         
         void paintListBoxItem(int row, juce::Graphics& g, int w, int h, bool selected) override {
-            if (selected) g.fillAll(juce::Colour(0xff3a5a7a));
+            if (selected) g.fillAll(juce::Colour(0xff8a3f46));
             g.setColour(selected ? juce::Colours::white : juce::Colours::lightgrey);
             g.setFont(juce::FontOptions(14.0f));
             g.drawText(items[row], 5, 0, w - 10, h, juce::Justification::centredLeft, true);

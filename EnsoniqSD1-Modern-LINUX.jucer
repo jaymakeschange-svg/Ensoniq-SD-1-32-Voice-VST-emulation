@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<JUCERPROJECT id="Sd1Mdn" name="Ensoniq SD-1 Modern" projectType="audioplug" useAppConfig="0"
+              addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1" bundleIdentifier="com.sojusrecords.EnsoniqSD1Modern"
+              companyWebsite="www.sojusrecords.com" companyCopyright="Open Source GPLv2/3"
+              companyName="EnsoniqMAME" pluginCharacteristicsValue="pluginIsSynth,pluginProducesMidiOut,pluginWantsMidiIn"
+              pluginFormats="buildVST3" version="1.0.2" pluginName="Ensoniq SD-1 Modern"
+              pluginDesc="Ensoniq SD-1 MAME Emu VST - Modern UI" pluginManufacturer="EnsoniqMAME"
+              pluginManufacturerCode="Esma" pluginCode="SD1M" pluginAUExportPrefix="EnsoniqSD1ModernAU"
+              companyEmail="sjs@sojusrecords.com" pluginAUMainType="'aumu'"
+              cppLanguageStandard="20">
+  <MAINGROUP id="OpvzjD" name="Ensoniq SD-1 Modern">
+    <GROUP id="{B55D6966-246C-C5C4-DBF6-55CB66D6CDB4}" name="Resources">
+      <FILE id="fhfkAt" name="q.svg" compile="0" resource="1" file="Source/q.svg"/>
+      <FILE id="vH7VVm" name="cart.svg" compile="0" resource="1" file="Source/cart.svg"/>
+      <FILE id="ADy8If" name="floppy.svg" compile="0" resource="1" file="Source/floppy.svg"/>
+      <FILE id="JROKEE" name="labels_tablet.png" compile="0" resource="1"
+            file="Source/labels_tablet.png"/>
+      <FILE id="V7wOZL" name="labels_rack.png" compile="0" resource="1" file="Source/labels_rack.png"/>
+      <FILE id="TcIvwn" name="labels_compact.png" compile="0" resource="1"
+            file="Source/labels_compact.png"/>
+      <FILE id="UmoBTy" name="labels_full.png" compile="0" resource="1" file="Source/labels_full.png"/>
+    </GROUP>
+    <GROUP id="{3F88782C-AB7D-82EE-F4B6-16FDEB0AE012}" name="Source">
+      <FILE id="MV9ogt" name="esqpanel.h" compile="0" resource="0" file="Source/esqpanel.h"/>
+      <FILE id="FT895t" name="PresetBrowserComponent.cpp" compile="1" resource="0"
+            file="Source/PresetBrowserComponent.cpp"/>
+      <FILE id="B63XbU" name="PresetBrowserComponent.h" compile="0" resource="0"
+            file="Source/PresetBrowserComponent.h"/>
+      <FILE id="Md1Thm" name="ModernTheme.h" compile="0" resource="0" file="Source/ModernTheme.h"/>
+      <FILE id="Md1Vwh" name="ModernView.h" compile="0" resource="0" file="Source/ModernView.h"/>
+      <FILE id="Md1Vwc" name="ModernView.cpp" compile="1" resource="0" file="Source/ModernView.cpp"/>
+      <FILE id="Md1Prb" name="SD1VoiceProbe.h" compile="0" resource="0" file="Source/SD1VoiceProbe.h"/>
+      <FILE id="FpJD5r" name="sd1disk.h" compile="0" resource="0" file="Source/sd1disk.h"/>
+      <FILE id="IWhokv" name="PluginProcessor.cpp" compile="1" resource="0"
+            file="Source/PluginProcessor.cpp"/>
+      <FILE id="YhSlmb" name="PluginProcessor.h" compile="0" resource="0"
+            file="Source/PluginProcessor.h"/>
+      <FILE id="fNCSn0" name="PluginEditor.cpp" compile="1" resource="0"
+            file="Source/PluginEditor.cpp"/>
+      <FILE id="Z6Wmy3" name="PluginEditor.h" compile="0" resource="0" file="Source/PluginEditor.h"/>
+    </GROUP>
+  </MAINGROUP>
+  <MODULES>
+    <MODULE id="juce_audio_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_audio_devices" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_audio_formats" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_audio_plugin_client" showAllCode="1" useLocalCopy="0"
+            useGlobalPath="0"/>
+    <MODULE id="juce_audio_processors" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_audio_processors_headless" showAllCode="1" useLocalCopy="0"
+            useGlobalPath="0"/>
+    <MODULE id="juce_audio_utils" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_core" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_data_structures" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_events" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_graphics" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_gui_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_gui_extra" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_midi_ci" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+  </MODULES>
+  <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1" JUCE_VST3_CAN_REPLACE_VST2="0"
+               JUCE_USE_FLAC="0" JUCE_WEB_BROWSER="0"/>
+  <EXPORTFORMATS>
+    <LINUX_MAKE targetFolder="Builds/LinuxMakefile-Modern" externalLibraries="frontend&#10;emu&#10;mame_sd132&#10;optional&#10;formats&#10;dasm&#10;emu&#10;mame_sd132&#10;optional&#10;formats&#10;dasm&#10;osd_sdl3&#10;qtdbg_sdl3&#10;ocore_sdl3&#10;utils&#10;lua&#10;lualibs&#10;expat&#10;zlib&#10;flac&#10;portaudio&#10;portmidi&#10;jpeg&#10;7z&#10;zstd&#10;utf8proc&#10;sqlite3&#10;asmjit&#10;bgfx&#10;bimg&#10;bx&#10;softfloat3&#10;ymfm&#10;wdlfft&#10;linenoise&#10;SDL3&#10;SDL2&#10;sd1disk"
+                extraLinkerFlags="-Wl,--allow-multiple-definition" smallIcon="fhfkAt"
+                bigIcon="fhfkAt">
+      <CONFIGURATIONS>
+        <CONFIGURATION isDebug="0" name="Release" targetName="EnsoniqSD1Modern" headerPath="../../mame/src&#10;../../mame/src/frontend/mame&#10;../../mame/src/emu&#10;../../mame/src/osd&#10;../../mame/src/lib&#10;../../mame/src/lib/util&#10;../../mame/3rdparty&#10;../../mame/3rdparty/bx/include&#10;../../mame/3rdparty/asio/include&#10;../../Source/&#10;../../mame/src/devices&#10;../../mame/src/devices/machine&#10;../../mame/src/mame/ensoniq"
+                       libraryPath="../../mame/build/linux_gcc/bin/x64/Release&#10;../../mame/build/linux_gcc/bin/x64/Release/mame_sd132&#10;../../mame/build/linux_gcc/bin/x64/Release/mame_mame&#10;../../Source/sd1disklinux"
+                       linkTimeOptimisation="0" optimisation="3"/>
+      </CONFIGURATIONS>
+      <MODULEPATHS>
+        <MODULEPATH id="juce_audio_basics" path="../../juce/modules"/>
+        <MODULEPATH id="juce_audio_devices" path="../../juce/modules"/>
+        <MODULEPATH id="juce_audio_formats" path="../../juce/modules"/>
+        <MODULEPATH id="juce_audio_plugin_client" path="../../juce/modules"/>
+        <MODULEPATH id="juce_audio_processors" path="../../juce/modules"/>
+        <MODULEPATH id="juce_audio_processors_headless" path="../../juce/modules"/>
+        <MODULEPATH id="juce_audio_utils" path="../../juce/modules"/>
+        <MODULEPATH id="juce_core" path="../../juce/modules"/>
+        <MODULEPATH id="juce_data_structures" path="../../juce/modules"/>
+        <MODULEPATH id="juce_events" path="../../juce/modules"/>
+        <MODULEPATH id="juce_graphics" path="../../juce/modules"/>
+        <MODULEPATH id="juce_gui_basics" path="../../juce/modules"/>
+        <MODULEPATH id="juce_gui_extra" path="../../juce/modules"/>
+        <MODULEPATH id="juce_midi_ci" path="../../juce/modules"/>
+      </MODULEPATHS>
+    </LINUX_MAKE>
+  </EXPORTFORMATS>
+</JUCERPROJECT>

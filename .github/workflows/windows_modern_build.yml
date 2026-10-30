@@ -1,0 +1,180 @@
+name: Windows VST3 Build (Modern UI)
+
+# Builds "Ensoniq SD-1 Modern" (the redesigned interface) as a Windows VST3.
+# Follows BUILD.md: patched MAME 0.288 (sd132 subtarget) built with Visual Studio,
+# then the JUCE plugin from EnsoniqSD1-Modern-WIN-nuskool-AVX2.jucer.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ modern-ui ]
+
+env:
+  JUCE_TAG: "8.0.15"
+  MAME_TAG: "mame0288"
+  JUCER: "EnsoniqSD1-Modern-WIN-nuskool-AVX2.jucer"
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 360
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Detect Visual Studio
+      id: vs
+      shell: pwsh
+      run: |
+        $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+        $ver  = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild -property catalog_productLineVersion
+        $path = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild -property installationPath
+        Write-Host "Visual Studio $ver at $path"
+        if ($ver -ge 2026) { $gen = "vs2026"; $ts = "v145"; $exp = "VS2026" } else { $gen = "vs2022"; $ts = "v143"; $exp = "VS2022" }
+        "gen=$gen"   >> $env:GITHUB_OUTPUT
+        "ts=$ts"     >> $env:GITHUB_OUTPUT
+        "exp=$exp"   >> $env:GITHUB_OUTPUT
+        "msbuild=$path\MSBuild\Current\Bin\MSBuild.exe" >> $env:GITHUB_OUTPUT
+
+    - name: Set up Python
+      id: py
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Clone MAME and JUCE
+      shell: pwsh
+      run: |
+        git clone --depth 1 --branch $env:MAME_TAG https://github.com/mamedev/mame.git C:\mame
+        git clone --depth 1 --branch $env:JUCE_TAG https://github.com/juce-framework/JUCE.git C:\JUCE
+
+    - name: Apply MAME patches
+      shell: pwsh
+      run: |
+        $map = @{
+          "esqpanel.h"="src\mame\ensoniq\esqpanel.h"; "esqpanel.cpp"="src\mame\ensoniq\esqpanel.cpp";
+          "esq5505.cpp"="src\mame\ensoniq\esq5505.cpp"; "sd132.lay"="src\mame\layout\sd132.lay";
+          "esq16_dsk.cpp"="src\lib\formats\esq16_dsk.cpp"; "es5510.cpp"="src\devices\cpu\es5510\es5510.cpp";
+          "main.h"="src\emu\main.h"; "emufwd.h"="src\emu\emufwd.h"; "machine.h"="src\emu\machine.h";
+          "video.cpp"="src\emu\video.cpp"; "emu.h"="src\emu\emu.h"; "sound.cpp"="src\emu\sound.cpp";
+          "machine.cpp"="src\emu\machine.cpp"; "rendlay.cpp"="src\emu\rendlay.cpp"; "debugcpu.cpp"="src\emu\debug\debugcpu.cpp";
+          "cheat.cpp"="src\frontend\mame\cheat.cpp"; "clifront.cpp"="src\frontend\mame\clifront.cpp";
+          "luaengine.cpp"="src\frontend\mame\luaengine.cpp"; "luaengine.h"="src\frontend\mame\luaengine.h";
+          "luaengine_render.cpp"="src\frontend\mame\luaengine_render.cpp"; "mame.cpp"="src\frontend\mame\mame.cpp";
+          "mame.h"="src\frontend\mame\mame.h"; "ui.cpp"="src\frontend\mame\ui\ui.cpp"; "pluginopt.cpp"="src\frontend\mame\ui\pluginopt.cpp";
+          "selgame.cpp"="src\frontend\mame\ui\selgame.cpp"; "mainmenu.cpp"="src\frontend\mame\ui\mainmenu.cpp";
+          "utils.cpp"="src\frontend\mame\ui\utils.cpp"; "datmenu.cpp"="src\frontend\mame\ui\datmenu.cpp";
+          "devopt.cpp"="src\frontend\mame\ui\devopt.cpp"; "viewgfx.cpp"="src\frontend\mame\ui\viewgfx.cpp";
+          "cheatopt.cpp"="src\frontend\mame\ui\cheatopt.cpp"; "selmenu.cpp"="src\frontend\mame\ui\selmenu.cpp";
+          "selsoft.cpp"="src\frontend\mame\ui\selsoft.cpp"; "miscmenu.cpp"="src\frontend\mame\ui\miscmenu.cpp";
+          "info.cpp"="src\frontend\mame\ui\info.cpp"; "simpleselgame.cpp"="src\frontend\mame\ui\simpleselgame.cpp";
+          "main.cpp"="src\zexall\main.cpp"
+        }
+        foreach ($k in $map.Keys) { Copy-Item "Mame_Patches\$k" "C:\mame\$($map[$k])" -Force; Write-Host "patched $($map[$k])" }
+
+    - name: Restore MAME build cache
+      id: cache-mame
+      uses: actions/cache/restore@v4
+      with:
+        path: C:\mame\build
+        key: mame0288-win-${{ steps.vs.outputs.gen }}-${{ hashFiles('Mame_Patches/**') }}
+
+    - name: Generate MAME Visual Studio projects (MSYS2)
+      if: steps.cache-mame.outputs.cache-hit != 'true'
+      shell: pwsh
+      env:
+        MSYSTEM: MINGW64
+        CHERE_INVOKING: "1"
+      run: |
+        C:\msys64\usr\bin\bash.exe -lc "pacman -S --noconfirm --needed make mingw-w64-x86_64-gcc"
+        $py = "${{ steps.py.outputs.python-path }}" -replace '\\','/'
+        C:\msys64\usr\bin\bash.exe -lc "cd /c/mame && make ${{ steps.vs.outputs.gen }} SUBTARGET=sd132 SOURCES=src/mame/ensoniq/esq5505.cpp USE_BGFX=0 NOWERROR=1 REGENIE=1 PYTHON_EXECUTABLE='$py' -j4"
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        Get-ChildItem C:\mame\build\projects -Recurse -Filter *.sln | ForEach-Object { Write-Host $_.FullName }
+
+    - name: Build MAME (MSBuild)
+      if: steps.cache-mame.outputs.cache-hit != 'true'
+      shell: pwsh
+      env:
+        # appended to every cl.exe call: the NTDDI fix from BUILD.md, and no warnings-as-errors
+        _CL_: "/WX- /U_WIN32_WINNT /UNTDDI_VERSION /D_WIN32_WINNT=0x0A00 /DNTDDI_VERSION=0x0A000000"
+      run: |
+        $sln = Get-ChildItem C:\mame\build\projects\windows -Recurse -Filter *.sln | Select-Object -First 1
+        Write-Host "Building $($sln.FullName)"
+        & "${{ steps.vs.outputs.msbuild }}" $sln.FullName /p:Configuration=Release /p:Platform=x64 `
+            /p:PlatformToolset=${{ steps.vs.outputs.ts }} /p:TreatWarningAsError=false /m /v:minimal /nologo
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+    - name: Save MAME build cache
+      if: steps.cache-mame.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: C:\mame\build
+        key: mame0288-win-${{ steps.vs.outputs.gen }}-${{ hashFiles('Mame_Patches/**') }}
+
+    - name: Build Projucer
+      shell: pwsh
+      run: |
+        $dir = Get-ChildItem C:\JUCE\extras\Projucer\Builds -Directory -Filter "VisualStudio*" | Sort-Object Name -Descending | Select-Object -First 1
+        $sln = Get-ChildItem $dir.FullName -Filter *.sln | Select-Object -First 1
+        & "${{ steps.vs.outputs.msbuild }}" $sln.FullName /p:Configuration=Release /p:Platform=x64 /p:PlatformToolset=${{ steps.vs.outputs.ts }} /m /v:minimal /nologo
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        $exe = Get-ChildItem $dir.FullName -Recurse -Filter Projucer.exe | Select-Object -First 1
+        "PROJUCER=$($exe.FullName)" >> $env:GITHUB_ENV
+
+    - name: Point the .jucer at this machine
+      shell: pwsh
+      run: |
+        $src  = Join-Path $env:GITHUB_WORKSPACE "Source"
+        $libs = Get-ChildItem C:\mame\build -Recurse -Filter *.lib | Where-Object { $_.FullName -notmatch '\\obj\\' }
+        $libDirs  = @($libs | ForEach-Object { $_.DirectoryName } | Sort-Object -Unique) + @("$src\sd1diskwin", $src)
+        $libNames = @($libs | ForEach-Object { $_.Name } | Sort-Object -Unique) + @("sd1disk.lib",
+                      "ws2_32.lib","winmm.lib","dinput8.lib","dxguid.lib","opengl32.lib","dsound.lib","xinput.lib",
+                      "comctl32.lib","shlwapi.lib","ntdll.lib","userenv.lib","bcrypt.lib","advapi32.lib")
+        Write-Host "MAME libraries:"; $libNames | ForEach-Object { Write-Host "  $_" }
+
+        $j = Get-Content $env:JUCER -Raw
+        $j = $j -replace 'pluginFormats="[^"]*"', 'pluginFormats="buildVST3"'
+        if ("${{ steps.vs.outputs.exp }}" -eq "VS2022") {
+          $j = $j -replace '<VS2026 ', '<VS2022 ' -replace '</VS2026>', '</VS2022>'
+          $j = $j -replace 'Builds/VisualStudio2026-Modern', 'Builds/VisualStudio2022-Modern'
+        }
+        $j = $j -replace 'useGlobalPath="1"', 'useGlobalPath="0"'
+        $j = $j -replace '<MODULEPATH id="([^"]*)" path="[^"]*"/>', '<MODULEPATH id="$1" path="C:\JUCE\modules"/>'
+        $j = $j -replace [regex]::Escape('C:\Users\Unloadable\Documents\EnsoniqSD1\Source'), $src
+        $j = $j -replace 'libraryPath="[^"]*"', ('libraryPath="' + ($libDirs -join '&#10;') + '"')
+        $j = $j -replace 'externalLibraries="[^"]*"', ('externalLibraries="' + ($libNames -join '&#10;') + '"')
+        Set-Content $env:JUCER $j -NoNewline
+        Select-String -Path $env:JUCER -Pattern 'pluginCode|pluginName|targetFolder|targetName' | ForEach-Object { Write-Host $_.Line.Trim() }
+
+    - name: Generate Visual Studio project (Projucer)
+      shell: pwsh
+      run: |
+        & $env:PROJUCER --resave $env:JUCER
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        Get-ChildItem Builds -Recurse -Filter *.sln | ForEach-Object { Write-Host $_.FullName }
+
+    - name: Build plugin
+      shell: pwsh
+      run: |
+        $sln = Get-ChildItem Builds -Recurse -Filter *.sln | Where-Object { $_.FullName -match 'Modern' } | Select-Object -First 1
+        Write-Host "Building $($sln.FullName)"
+        & "${{ steps.vs.outputs.msbuild }}" $sln.FullName /p:Configuration=Release /p:Platform=x64 `
+            /p:PlatformToolset=${{ steps.vs.outputs.ts }} /m /v:minimal /nologo
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        Get-ChildItem Builds -Recurse -Filter "*.vst3" | ForEach-Object { Write-Host $_.FullName }
+
+    - name: Package
+      shell: pwsh
+      run: |
+        $bundle = Get-ChildItem Builds -Recurse -Directory -Filter "Ensoniq SD-1 Modern.vst3" | Select-Object -First 1
+        New-Item -ItemType Directory -Force out | Out-Null
+        Copy-Item $bundle.FullName "out\" -Recurse
+        Copy-Item README.md, LICENSE "out\"
+
+    - name: Upload VST3
+      uses: actions/upload-artifact@v4
+      with:
+        name: Ensoniq-SD-1-Modern-Windows-VST3
+        path: out\

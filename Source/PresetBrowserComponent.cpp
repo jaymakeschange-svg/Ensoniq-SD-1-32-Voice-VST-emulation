@@ -123,11 +123,11 @@ PresetBrowserComponent::PresetBrowserComponent(EnsoniqSD1AudioProcessor& p)
     : audioProcessor(p)
 {
     headerLabel.setFont(juce::Font(juce::FontOptions(20.0f)).boldened());
-    headerLabel.setColour(juce::Label::textColourId, juce::Colours::orange);
+    headerLabel.setColour(juce::Label::textColourId, juce::Colour(0xffd85e69));
     addAndMakeVisible(headerLabel);
     
     // Progress bar (hidden by default)
-    progressBar.setColour(juce::ProgressBar::foregroundColourId, juce::Colours::orange);
+    progressBar.setColour(juce::ProgressBar::foregroundColourId, juce::Colour(0xffd85e69));
     addAndMakeVisible(progressBar);
     progressBar.setVisible(false);
     
@@ -149,7 +149,7 @@ PresetBrowserComponent::PresetBrowserComponent(EnsoniqSD1AudioProcessor& p)
     addAndMakeVisible(importBankButton);
     
     // UX: Back button, which ONLY takes you back to the root directory of the images
-    backToFilesButton.setColour(juce::TextButton::buttonColourId, juce::Colours::dodgerblue);
+    backToFilesButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff1f4a46));
     backToFilesButton.onClick = [this] {
         if (isViewingDiskBank && currentlyLoadedArchive.existsAsFile()) {
             int32_t err = 0;
@@ -573,11 +573,11 @@ PresetBrowserComponent::PresetBrowserComponent(EnsoniqSD1AudioProcessor& p)
     
     bankContentList.setModel(&bankModel);
     bankModel.parentComponent = this;
-    bankContentList.setColour(juce::ListBox::backgroundColourId, juce::Colour(0xff151515));
+    bankContentList.setColour(juce::ListBox::backgroundColourId, juce::Colour(0xff0e0e0e));
     addAndMakeVisible(bankContentList);
     bankContentList.setMultipleSelectionEnabled(true);
     
-    refreshButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff333333));
+    refreshButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff313131));
     refreshButton.onClick = [this] {
         syncSettingsFromDisk();
         rebuildTree();
@@ -1308,7 +1308,7 @@ PresetBrowserComponent::PresetBrowserComponent(EnsoniqSD1AudioProcessor& p)
     playHintLabel.setVisible(false);
     
     contentList.setModel(this); 
-    contentList.setColour(juce::ListBox::backgroundColourId, juce::Colour(0xff2a2a2a)); 
+    contentList.setColour(juce::ListBox::backgroundColourId, juce::Colour(0xff262626)); 
     contentList.setRowHeight(24);
     contentList.setMultipleSelectionEnabled(true);
     
@@ -1317,7 +1317,7 @@ PresetBrowserComponent::PresetBrowserComponent(EnsoniqSD1AudioProcessor& p)
     
     sourcesTree.setRootItemVisible(false);
     sourcesTree.setDefaultOpenness(true);
-    sourcesTree.setColour(juce::TreeView::backgroundColourId, juce::Colour(0xff151515));
+    sourcesTree.setColour(juce::TreeView::backgroundColourId, juce::Colour(0xff0e0e0e));
     sourcesTree.setIndentSize(1);
     
     // Timer runs from construction — needed for boot indicator repaint.
@@ -1694,7 +1694,7 @@ juce::StringArray PresetBrowserComponent::getRealIntRamNames() {
 
 void PresetBrowserComponent::paint(juce::Graphics& g)
 {
-    g.fillAll(juce::Colour(0xff1e1e1e));
+    g.fillAll(juce::Colour(0xff2b2b2b));
     g.setColour(juce::Colours::black);
     
     auto bounds = getLocalBounds().withTrimmedTop(30);
@@ -1712,7 +1712,7 @@ void PresetBrowserComponent::paint(juce::Graphics& g)
         juce::String vfd = audioProcessor.getHardwareVfdText();
 
         g.setFont(juce::Font(juce::FontOptions(13.0f)).boldened());
-        g.setColour(juce::Colours::orange);
+        g.setColour(juce::Colour(0xffd85e69));
 
         auto topRow = vfdBounds.removeFromTop(17);
         auto bottomRow = vfdBounds;
@@ -1745,7 +1745,7 @@ void PresetBrowserComponent::paintOverChildren(juce::Graphics& g)
         auto strip = getLocalBounds().removeFromTop(37).toFloat().reduced(4.0f, 3.0f).withY(getLocalBounds().getY() + 10.0f);
         g.setColour(juce::Colour(0xee1a0a00));
         g.fillRoundedRectangle(strip, 5.0f);
-        g.setColour(juce::Colours::orange);
+        g.setColour(juce::Colour(0xffd85e69));
         g.drawRoundedRectangle(strip, 5.0f, 1.0f);
         
         int dots = (int)(mameTime * 2.0) % 4;
@@ -1756,14 +1756,14 @@ void PresetBrowserComponent::paintOverChildren(juce::Graphics& g)
                            + "  Please wait...";
 
         g.setFont(juce::Font(juce::FontOptions(13.0f)).boldened());
-        g.setColour(juce::Colours::orange);
+        g.setColour(juce::Colour(0xffd85e69));
         g.drawText(msg, strip.reduced(10.0f, 0.0f), juce::Justification::centredLeft, false);
 
         // Progress bar on the right side of the strip
         auto bar = strip.reduced(10.0f, 7.0f).withTrimmedLeft(260.0f);
         g.setColour(juce::Colour(0x33ffffff));
         g.fillRoundedRectangle(bar, 3.0f);
-        g.setColour(juce::Colours::orange.withAlpha(0.9f));
+        g.setColour(juce::Colour(0xffd85e69).withAlpha(0.9f));
         g.fillRoundedRectangle(bar.withWidth(bar.getWidth() * fraction), 3.0f);
     }
 
@@ -2289,18 +2289,96 @@ void PresetBrowserComponent::paintListBoxItem(int rowNumber, juce::Graphics& g, 
     if (rowNumber >= currentListItems.size()) return;
 
     if (rowIsSelected) {
-        g.fillAll(juce::Colour(0xff446688)); 
+        g.fillAll(juce::Colour(0xff1f4a46)); 
     }
 
     juce::String text = currentListItems[rowNumber];
     bool isDir = (currentCategory == "Browse Computer") && (text == ".." || text.endsWithChar('/'));
     
-    g.setColour(isDir ? juce::Colours::orange : (rowIsSelected ? juce::Colours::white : juce::Colours::lightgrey));
+    g.setColour(isDir ? juce::Colour(0xffd85e69) : (rowIsSelected ? juce::Colours::white : juce::Colours::lightgrey));
     g.setFont(isDir ? juce::Font(juce::FontOptions(18.0f)).boldened() : juce::FontOptions(18.0f));
     g.drawText(text, 10, 0, width - 15, height, juce::Justification::centredLeft, true);
 }
 
 void PresetBrowserComponent::listBoxItemClicked(int row, const juce::MouseEvent&)
+{
+    handleContentRowClick(row);
+}
+
+// ==============================================================================
+// MODERN UI: PRESET STEPPING (< >)
+// Walks the programs of the opened bank/disk/cartridge if one is open, otherwise
+// the rows of the current list (internal bank or folder). Each step runs the very
+// same handler as a mouse click on that row, so loading is unchanged.
+// ==============================================================================
+bool PresetBrowserComponent::stepPreset(int delta)
+{
+    if (isSequenceTransferActive || wpState != 0) return false;
+    if (progressValue >= 0.0) return false; // a transfer is still running (same spam guard as clicks)
+
+    // 1. Programs inside an opened bank file / cartridge / disk bank
+    const bool bankIsSteppable = bankModel.items.size() > 0
+                              && currentlyLoadedArchive.existsAsFile()
+                              && importBankButton.getButtonText() != "Import Sequencer Data";
+    if (bankIsSteppable) {
+        const int n = bankModel.items.size();
+        int row = bankContentList.getSelectedRow();
+        row = (row < 0) ? (delta > 0 ? 0 : n - 1) : ((row + delta) % n + n) % n;
+        bankContentList.selectRow(row);
+        if (bankModel.onSelect) bankModel.onSelect(row);
+        return true;
+    }
+
+    // 2. Rows of the current list
+    if (currentListItems.isEmpty()) {
+        updateContentList(currentCategory.isNotEmpty() ? currentCategory : juce::String("INT (RAM)"));
+        contentList.updateContent();
+    }
+    const int n = currentListItems.size();
+    if (n == 0) return false;
+
+    int row = contentList.getSelectedRow();
+    for (int tries = 0; tries < n; ++tries) {
+        row = (row < 0) ? (delta > 0 ? 0 : n - 1) : ((row + delta) % n + n) % n;
+        const juce::String item = currentListItems[row];
+        if (item == ".." || item.endsWithChar('/') || item.startsWith("(")) continue; // folders, placeholders
+        break;
+    }
+    contentList.selectRow(row);
+    contentList.scrollToEnsureRowIsOnscreen(row);
+    handleContentRowClick(row);
+    return true;
+}
+
+juce::String PresetBrowserComponent::getCurrentPresetLabel() const
+{
+    const int b = bankContentList.getSelectedRow();
+    if (b >= 0 && b < bankModel.items.size() && currentlyLoadedArchive.existsAsFile())
+        return bankModel.items[b].trim();
+
+    const int r = contentList.getSelectedRow();
+    if (r < 0 || r >= currentListItems.size()) return {};
+    const juce::String item = currentListItems[r];
+    if (currentCategory == "INT (RAM)" || currentCategory.startsWith("ROM") || currentCategory == "CART")
+        return item.substring(4).trim();
+    return juce::File::createFileWithoutCheckingPath(item).getFileNameWithoutExtension();
+}
+
+juce::String PresetBrowserComponent::getCurrentSourceLabel() const
+{
+    const int b = bankContentList.getSelectedRow();
+    if (b >= 0 && currentlyLoadedArchive.existsAsFile())
+        return currentlyLoadedArchive.getFileName() + "  " + juce::String(b + 1) + "/" + juce::String(bankModel.items.size());
+
+    juce::String src = currentCategory;
+    if (src.startsWith("BOOKMARK:")) src = juce::File(src.fromFirstOccurrenceOf("BOOKMARK:", false, false)).getFileName();
+    const int r = contentList.getSelectedRow();
+    if (r >= 0 && currentListItems.size() > 0)
+        src += "  " + juce::String(r + 1) + "/" + juce::String(currentListItems.size());
+    return src;
+}
+
+void PresetBrowserComponent::handleContentRowClick(int row)
 {
     if (isSequenceTransferActive) return;
         if (row >= currentListItems.size()) return;
@@ -3004,7 +3082,7 @@ void PresetBrowserComponent::paintOverlay(juce::Graphics& g)
         juce::String dotStr;
         for (int i = 0; i < dotCount; ++i) dotStr += ".";
 
-        g.setColour(juce::Colours::orange);
+        g.setColour(juce::Colour(0xffd85e69));
         g.setFont(juce::Font(juce::FontOptions(22.0f)).boldened());
         g.drawText("SD-1 is booting" + dotStr, bounds.withTrimmedBottom(40),
                    juce::Justification::centred);
@@ -3024,11 +3102,11 @@ void PresetBrowserComponent::paintOverlay(juce::Graphics& g)
     auto barArea = bounds.withSizeKeepingCentre(400, 20).translated(0, 40);
     
     // Background
-    g.setColour(juce::Colour(0xff333333));
+    g.setColour(juce::Colour(0xff313131));
     g.fillRoundedRectangle(barArea.toFloat(), 4.0f);
     
     // Fill
-    g.setColour(juce::Colours::orange);
+    g.setColour(juce::Colour(0xffd85e69));
     auto fillArea = barArea.withWidth(static_cast<int>(barArea.getWidth() * progress));
     g.fillRoundedRectangle(fillArea.toFloat(), 4.0f);
     

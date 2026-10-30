@@ -13,11 +13,15 @@
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
 #include "PresetBrowserComponent.h"
+#include "ModernView.h"
+
+struct SD1VoiceProbe;
 
 //==============================================================================
 
 class EnsoniqSD1AudioProcessorEditor  : public juce::AudioProcessorEditor,
-                                        private juce::Timer
+                                        private juce::Timer,
+                                        private sd1ui::Host
 {
 public:
     EnsoniqSD1AudioProcessorEditor (EnsoniqSD1AudioProcessor&);
@@ -62,7 +66,35 @@ private:
     
     juce::TextButton loadMediaButton { "PRESET/FILE MANAGER" };
     std::unique_ptr<juce::FileChooser> fileChooser;
-    void loadMediaButtonClicked();
+    void loadMediaButtonClicked (juce::Component* menuAnchor = nullptr);
+    void openFileManager();
+
+    // --- MODERN UI LAYER (drawn over the MAME panel; PANEL hides it) ---
+    std::unique_ptr<sd1ui::ModernView> modernView;
+    std::unique_ptr<SD1VoiceProbe> voiceProbe;
+    sd1ui::LookAndFeel modernLookAndFeel;
+    juce::TextButton modernReturnButton { "MODERN UI" };
+    bool modernActive = true;
+    void updateModernVisibility();
+
+    // sd1ui::Host
+    bool         engineReady() override;
+    juce::String vfdText() override;
+    bool         vfdUnderlined (int index) override;
+    void  setButton (const juce::String& paramID, bool down) override;
+    void  beginDataEntry() override;
+    void  setDataEntry (float v) override;
+    void  endDataEntry() override;
+    float getDataEntry() override;
+    bool  readVoices (sd1ui::VoiceFrame&) override;
+    int   readWave (int bank, uint32_t addr, uint32_t loopStart, uint32_t loopEnd, int16_t* dst, int n) override;
+    void         stepPreset (int delta) override;
+    juce::String presetName() override;
+    juce::String presetSource() override;
+    void openLibrary() override;
+    void openMedia (juce::Component* anchor) override;
+    void openSettings() override;
+    void showPanel() override;
 
     // --- SETTINGS PANEL GUI COMPONENTS ---
     juce::TextButton settingsButton { "Settings / About" };
