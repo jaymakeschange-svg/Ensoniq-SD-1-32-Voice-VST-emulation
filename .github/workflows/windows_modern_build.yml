@@ -88,6 +88,20 @@ jobs:
         restore-keys: |
           mame0288-win-${{ steps.vs.outputs.gen }}-${{ hashFiles('Mame_Patches/**') }}-
 
+    - name: Reuse cached MAME objects
+      if: steps.cache-mame.outputs.cache-matched-key != ''
+      shell: pwsh
+      run: |
+        # A fresh clone stamps every source "now", which would make MSBuild rebuild all of MAME.
+        # Sources are pinned by tag + patch hash (in the cache key), so backdate them instead.
+        $old = Get-Date "2020-01-01"
+        foreach ($d in "C:\mame\src", "C:\mame\3rdparty", "C:\mame\scripts") {
+          Get-ChildItem $d -Recurse -File | ForEach-Object { $_.LastWriteTime = $old }
+        }
+        Write-Host "Restored $env:KEY; sources backdated"
+      env:
+        KEY: ${{ steps.cache-mame.outputs.cache-matched-key }}
+
     - name: Generate MAME Visual Studio projects (MSYS2)
       shell: pwsh
       env:
