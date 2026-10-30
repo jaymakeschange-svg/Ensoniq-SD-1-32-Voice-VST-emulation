@@ -83,12 +83,14 @@ jobs:
           mame0288-win-${{ steps.vs.outputs.gen }}-${{ hashFiles('Mame_Patches/**') }}-
 
     - name: Generate MAME Visual Studio projects (MSYS2)
-      if: hashFiles('C:/mame/build/projects/windows/**/*.sln') == ''
       shell: pwsh
       env:
         MSYSTEM: MINGW64
         CHERE_INVOKING: "1"
       run: |
+        if (Get-ChildItem C:\mame\build\projects\windows -Recurse -Filter *.sln -ErrorAction SilentlyContinue) {
+          Write-Host "Projects restored from cache; keeping them so the build stays incremental"; exit 0
+        }
         C:\msys64\usr\bin\bash.exe -lc "pacman -S --noconfirm --needed make mingw-w64-x86_64-gcc"
         $py = "${{ steps.py.outputs.python-path }}" -replace '\\','/'
         C:\msys64\usr\bin\bash.exe -lc "cd /c/mame && make ${{ steps.vs.outputs.gen }} SUBTARGET=sd132 SOURCES=src/mame/ensoniq/esq5505.cpp USE_BGFX=0 NOWERROR=1 REGENIE=1 PYTHON_EXECUTABLE='$py' -j4"
