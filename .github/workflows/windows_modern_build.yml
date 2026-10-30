@@ -73,6 +73,12 @@ jobs:
         }
         foreach ($k in $map.Keys) { Copy-Item "Mame_Patches\$k" "C:\mame\$($map[$k])" -Force; Write-Host "patched $($map[$k])" }
 
+    - name: Add missing <string_view> includes (newer MSVC STL)
+      shell: pwsh
+      run: |
+        python .github\fix-includes.py C:\mame
+        Write-Host "::notice title=Toolchain::Visual Studio ${{ steps.vs.outputs.gen }} / ${{ steps.vs.outputs.ts }}"
+
     - name: Restore MAME build cache
       id: cache-mame
       uses: actions/cache/restore@v4
